@@ -13,6 +13,10 @@ $BuildId = [System.Guid]::NewGuid().ToString("N")
 $WorkDir = Join-Path $ProjectRoot ".pyinstaller-work-$BuildId"
 $SpecDir = Join-Path $ProjectRoot ".pyinstaller-spec-$BuildId"
 $ExePath = Join-Path $DistDir "SilentScreenAlarm.exe"
+$PythonExe = (python -c "import sys; print(sys.executable)").Trim()
+$PythonRoot = Split-Path -Parent $PythonExe
+$CondaBin = Join-Path $PythonRoot "Library\bin"
+$CondaLib = Join-Path $PythonRoot "Library\lib"
 
 New-Item -ItemType Directory -Force -Path $AssetDir | Out-Null
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
@@ -97,6 +101,32 @@ if (-not $NoExeIcon) {
     $pyinstallerArgs += @("--icon", $IconPath)
 }
 
+$anacondaDlls = @(
+    "tcl86t.dll",
+    "tk86t.dll",
+    "libmpdec-4.dll",
+    "libcrypto-3-x64.dll",
+    "liblzma.dll",
+    "LIBBZ2.dll",
+    "ffi.dll"
+)
+
+foreach ($dll in $anacondaDlls) {
+    $dllPath = Join-Path $CondaBin $dll
+    if (Test-Path $dllPath) {
+        $pyinstallerArgs += @("--add-binary", "$dllPath;.")
+    }
+}
+
+$tclDir = Join-Path $CondaLib "tcl8.6"
+$tkDir = Join-Path $CondaLib "tk8.6"
+if (Test-Path $tclDir) {
+    $pyinstallerArgs += @("--add-data", "$tclDir;tcl8.6")
+}
+if (Test-Path $tkDir) {
+    $pyinstallerArgs += @("--add-data", "$tkDir;tk8.6")
+}
+
 $pyinstallerArgs += "$ProjectRoot\alarm.py"
 
 python -m PyInstaller @pyinstallerArgs
@@ -114,6 +144,9 @@ if ($LASTEXITCODE -ne 0) {
 if (-not (Test-Path $ExePath)) {
     throw "Build finished but the executable was not found at $ExePath"
 }
+
+Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $SpecDir -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "Build complete:"
