@@ -1,0 +1,11 @@
+__pycache__/
+*.py[cod]
+.test_tmp/
+alarms.json
+build/
+dist/
+release/
+.pyinstaller-work*/
+.pyinstaller-spec*/
+*.spec
+assets/*.ico
